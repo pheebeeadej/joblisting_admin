@@ -1,0 +1,89 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use DB;
+use Hash;
+use App\Models\reguser;
+
+class profile_controller extends Controller
+{
+    
+    public function index(Request $request)
+    {
+        if (session()->has('logged_id')) {
+            
+            $user_id = $request->session()->get('logged_id');
+            $user_email = $request->session()->get('logged_email');
+            $username =  $request->session()->get('logged_username');
+            $wallets = DB::select('select * from regusers where id = :user_id', ['user_id' => $user_id]);
+      
+            
+            $wallets = $wallets[0];
+            
+
+            return view("profile",compact('wallets'));
+            
+
+        }else{
+            return redirect("login?r=profile");
+        }
+    }
+    
+    public function change_pass(Request $request)
+    {
+            
+            $request->validate([
+                    
+                'old_password' =>'required|alphaNum|min:5',
+                'new_password'  =>'required|alphaNum|min:5',
+                'confirm_password'  =>'required|alphaNum|min:5'
+
+            ]);
+        // declaring and get the value in variables
+            $user_id = $request->session()->get('logged_id');
+            $user_email = $request->session()->get('logged_email');
+            $password = $request->old_password;
+            $new_password = $request->new_password;
+            $confirm_password = $request->confirm_password;
+        
+        //seller check
+
+            $user = DB::select('select * from regusers where email = :username', ['username' => $user_email]);
+
+            
+            if ($user) {
+                // check if password matches
+            
+                if (Hash::check($password, $user[0]->password)) {
+
+                    if ( $new_password ==  $confirm_password) {
+
+                        $password =  Hash::make($request->new_password);
+
+                        $update = DB::table('regusers')
+                        ->where('id', $user_id)
+                        ->update([
+                            'password' => $password,
+                        ]);
+                            return back()->with('success','Password updated successfully');
+                    }else {
+                        return back()->with('fail','New passwords do not match.');
+                    }
+                    
+                    
+                }else {
+
+                    return back()->with('fail','Incorrect password. Please check password and retry');
+                }
+
+            }else{
+                return back()->with('fail','User details does not match our record. please check login details and retry');
+            }
+
+
+            
+    }
+
+}
